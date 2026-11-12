@@ -6,9 +6,9 @@
 
 ## About
 
-GitHub Action to extract metadata from Git reference and GitHub events. This action
-is particularly useful if used with [Docker Build Push](https://github.com/docker/build-push-action)
-action to tag and label Docker images.
+Acción de GitHub para extraer metadatos de referencias de Git y eventos de GitHub. Esta acción
+resulta especialmente útil si se utiliza junto con la acción [Docker Build Push](https://github.com/docker/build-push-action)
+para asignar etiquetas a las imágenes de Docker.
 
 ![Screenshot](.github/metadata-action.png)
 
