@@ -1,0 +1,9 @@
+{
+  "scenario": "DEMO HIPOTÉTICA: issue de entrenamiento, no un incidente real",
+  "issue": 101,
+  "title": "La etiqueta generada no coincide con la versión esperada",
+  "description": "Para una referencia Git de prueba se esperaba 1.2.0 y se obtuvo 1.2.",
+  "expected": "Tag exacto 1.2.0",
+  "actual": "Tag 1.2",
+  "suggested_tests": ["SemVer completo", "prerelease", "prefijos y sufijos"]
+}

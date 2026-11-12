@@ -1,0 +1,9 @@
+{
+  "scenario": "DEMO HIPOTÉTICA: resultado de un workflow, no evidencia de GitHub",
+  "repositorio": "curso/metadata-action",
+  "workflow": "test",
+  "estado": "failure",
+  "job": "Vitest",
+  "log": "FAIL __tests__/tag.test.ts: se esperaba '1.2.0' pero se obtuvo '1.2'",
+  "cambio": "Actualización de una regla de tags; revisar resultados exactos y regresiones"
+}

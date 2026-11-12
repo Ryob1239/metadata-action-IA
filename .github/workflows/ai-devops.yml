@@ -1,0 +1,72 @@
+name: IA DevOps - informe consultivo
+
+# workflow_run usa el código de la rama principal, nunca ejecuta código del PR.
+# Sin OPENAI_API_KEY produce sólo un informe de evidencia, NO resultados de IA.
+on:
+  workflow_run:
+    workflows: [test]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Tema del PDF que analizará el asistente'
+        required: true
+        default: 'ci'
+        type: choice
+        options:
+          - desarrollo
+          - pruebas
+          - ci
+          - entrega
+          - despliegue
+          - supervision
+          - iac
+          - mantenimiento
+          - kanban
+      target:
+        description: 'Nº de issue/PR/run o tag de release; puede dejarse vacío para ciertos modos'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  informe:
+    name: Asistencia IA sin cambiar código ni estados de CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Código estable del repositorio
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Analizar evidencia y generar informe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-6-luna
+          AI_INCLUDE_LOGS: 'false' # cambiar a true sólo tras revisar privacidad de logs
+          AI_MODE: ${{ inputs.mode }}
+          AI_TARGET: ${{ inputs.target }}
+        shell: bash
+        run: |
+          python3 tools/ai_devops.py \
+            --mode "${AI_MODE:-ci}" \
+            --target "${AI_TARGET:-}" \
+            --output artifacts/informe-ia.md
+          cat artifacts/informe-ia.md >> "$GITHUB_STEP_SUMMARY"
+          if ! grep -q 'IA_REAL_EJECUTADA' artifacts/informe-ia.md; then
+            echo '::warning::IA NO ejecutada: falta OPENAI_API_KEY o modo dry-run. No presentar este informe como inferencia real.'
+          fi
+
+      - name: Guardar evidencia de la ejecución
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: informe-ia-devops-${{ github.run_id }}
+          path: artifacts/informe-ia.md
+          if-no-files-found: warn
+          retention-days: 14

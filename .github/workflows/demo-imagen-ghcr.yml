@@ -1,0 +1,141 @@
+name: Demo ejecutable Metadata Action + imagen GHCR
+
+# El PR sólo valida. El job con packages:write sólo corre en master y
+# depende de la validación previa (separación de credenciales).
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-demo:
+    name: Ejecutar Action real + construir y ejecutar contenedor demo
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Nombre de imagen GHCR en minúsculas
+        id: image
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-demo"
+          echo "name=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Ejecutar el proyecto ORIGINAL desde este repositorio
+        id: meta
+        uses: ./
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
+          labels: |
+            org.opencontainers.image.title=Metadata Action - demostración académica
+            org.opencontainers.image.description=Contenedor demostrativo etiquetado por la Action original
+
+      - name: Validar tags y salidas JSON de la Action
+        env:
+          META_JSON: ${{ steps.meta.outputs.json }}
+          META_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          data = json.loads(os.environ['META_JSON'])
+          assert data.get('tags'), 'La Action no generó tags'
+          print('OK: uses: ./ ejecutó Metadata Action')
+          print('OK: las salidas JSON y tags están presentes')
+          print(os.environ['META_TAGS'])
+          PY
+          echo '## Ejecución real desde este repositorio' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Se ejecutó el proyecto original mediante `uses: ./`.' >> "$GITHUB_STEP_SUMMARY"
+          echo '### Tags generados' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "$META_TAGS" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Ejecutar Node.js directamente desde el repositorio
+        env:
+          BUILD_VERSION: ${{ steps.meta.outputs.version }}
+        run: node examples/contenedor-demo/demo.mjs
+
+      - name: Construir y ejecutar contenedor demostrativo en el runner
+        env:
+          BUILD_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          docker build -t metadata-action-demo:local ./examples/contenedor-demo
+          docker run --rm -e BUILD_VERSION="$BUILD_VERSION" metadata-action-demo:local
+
+  publicar-imagen:
+    name: Publicar imagen GHCR (SOLO master, tras validar)
+    needs: validar-demo
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    timeout-minutes: 20
+    steps:
+      - name: Checkout de código aprobado
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Nombre GHCR en minúsculas
+        id: image
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-demo"
+          echo "name=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Generar tags y labels automáticos con Metadata Action
+        id: meta
+        uses: ./
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.title=Metadata Action - demostración académica
+            org.opencontainers.image.description=Contenedor demostrativo etiquetado por la Action original
+
+      - name: Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Login GHCR con GITHUB_TOKEN (solamente en master)
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Construir y PUBLICAR imagen etiquetada por la Action
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ./examples/contenedor-demo
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Registrar imagen y digest para la evidencia académica
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ${{ steps.image.outputs.name }}
+          META_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          echo '## Imagen Docker automática publicada en GHCR' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Imagen: \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Digest: \`$DIGEST\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '### Tags generados por la Action original' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "$META_TAGS" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Esta imagen contiene la demostración, no un servidor de la GitHub Action.' >> "$GITHUB_STEP_SUMMARY"
