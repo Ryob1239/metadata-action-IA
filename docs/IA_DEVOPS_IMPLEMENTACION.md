@@ -13,7 +13,7 @@ Este ZIP corresponde a Docker Metadata Action, una **GitHub Action en TypeScript
 |---|---|
 | **Implementado en este paquete** | Archivos y pruebas incluidos, ejecutables localmente y al subirlos a GitHub. |
 | **Ejecutado localmente** | Verificamos el ejecutable de demostración y las pruebas del asistente sin internet ni clave. |
-| **Pendiente de ejecución remota** | Publicación real en GHCR, nuevos runs de GitHub Actions, Pull Request real e inferencia con OpenAI API requieren subir el repositorio y configurar la clave. |
+| **Pendiente de ejecución remota** | Publicación real en GHCR, nuevos runs de GitHub Actions, Pull Request real e inferencia con Google Gemini API requieren subir el repositorio y configurar la clave. |
 | **No implementado deliberadamente** | IA que apruebe merges, publique releases, cierre alertas o sustituya el generador determinista. |
 
 ## 2. Proceso de desarrollo y arquitectura con imágenes
@@ -23,9 +23,9 @@ Este ZIP corresponde a Docker Metadata Action, una **GitHub Action en TypeScript
 1. El desarrollo ocurre sobre una rama de Git y se propone mediante un **Pull Request**.
 2. Los workflows originales (`test.yml`, `validate.yml`, `ci.yml`, CodeQL y Zizmor) realizan verificaciones técnicas.
 3. Nuestro workflow `ai-pruebas.yml` valida el asistente con `unittest`, sin utilizar tokens ni APIs externas.
-4. El workflow `ai-devops.yml` se activa automáticamente al concluir `test` (**workflow_run**) y también permite escoger manualmente cualquiera de los **nueve temas** de IA.
+4. El workflow `ai-devops.yml` se activa **manualmente** mediante `workflow_dispatch`, para controlar el uso de la cuota gratuita, seleccionar cualquiera de los **nueve temas** y autorizar explícitamente el envío de datos de repositorios privados.
 5. Se recopila información de solo lectura de la API de GitHub. Por defecto se leen **estados de jobs y steps**, no logs completos; esto protege privacidad. La exportación de extractos de logs es opcional con `AI_INCLUDE_LOGS=true` tras revisar su contenido.
-6. Si existe el secreto `OPENAI_API_KEY`, se consulta un modelo a través de la API de OpenAI, se prepara un **informe consultivo** y se publica como **artifact** del workflow. Sin clave, se genera sólo un reporte de evidencia, identificado expresamente como **IA no ejecutada**.
+6. Si existe `GEMINI_API_KEY` y se cumple el control de privacidad, se consulta **Google Gemini Developer API**, se prepara un **informe consultivo** y se publica como **artifact** del workflow. Sin clave o sin autorización de datos privados, se genera sólo un reporte de evidencia, marcado como **IA no ejecutada**.
 7. La Action original permanece independiente y sus tags/labels finales se generan mediante el código del proyecto, **nunca mediante el modelo**.
 
 ## 3. Los siete requisitos de la actividad
@@ -35,7 +35,7 @@ Este ZIP corresponde a Docker Metadata Action, una **GitHub Action en TypeScript
 | 1 | Aplicar CI/CD al proyecto | Se mantienen los workflows oficiales y se agregan `ai-pruebas.yml`, `ai-devops.yml`, `demo-imagen-ghcr.yml`. |
 | 2 | Explicar desarrollo con imágenes | Figuras 01, 02 y 03 en `docs/imagenes/`, además de evidencia local (figura 04). |
 | 3 | Pruebas unitarias, automatización, pull y push | `tests_ai/` con `unittest`; GitHub Actions prueba en PR y push; la Action original conserva Vitest, Bake y CI. |
-| 4 | Mostrar en repositorio la imagen automatizada | La imagen **demostrativa** se crea en `demo-imagen-ghcr.yml` y se publica en `ghcr.io/USUARIO/REPOSITORIO-demo` al hacer push a `master`. |
+| 4 | Mostrar en repositorio la imagen automatizada | La imagen **demostrativa** se crea en `demo-imagen-ghcr.yml` y se publica en `ghcr.io/USUARIO/REPOSITORIO-demo` al hacer push a `main`. |
 | 5 | Ejecutar código desde el repositorio | El workflow ejecuta el proyecto original con **`uses: ./`**, valida `steps.meta.outputs.json`, ejecuta `demo.mjs` y también `docker run`. |
 | 6 | Mantenimiento de software | Nuevo formulario `mantenimiento-devops.yml`, checklist de PR, suite `tests_ai/`, informes de análisis IA por modo `mantenimiento`. |
 | 7 | Coincidencia con el PDF | Matriz de trazabilidad de los nueve temas en el apartado 4 de esta guía. |
@@ -78,40 +78,40 @@ En la pestaña **Actions → IA DevOps - informe consultivo → Run workflow**, 
 
 **Si ya existe un repositorio personal en GitHub**, es preferible clonarlo y copiar los archivos de este paquete sobre ese clon para conservar tu historial. El ZIP de entrega **no incluye `.git/`** para evitar transportar historial pesado del repositorio original. **No es necesario reemplazar el proyecto asignado:** estos archivos sólo añaden funcionalidades complementarias.
 
-**Si todavía no existe el repositorio**, crea uno y súbelo a la rama `master` (los workflows nuevos y los del proyecto analizado utilizan `master`). Desde la raíz del proyecto:
+**Si todavía no existe el repositorio**, crea uno y súbelo a la rama `main` (rama principal del repositorio estudiantil). Desde la raíz del proyecto:
 
 ```bash
 git init
-git branch -M master
+git branch -M main
 git remote add origin https://github.com/USUARIO/metadata-action.git
 git add .
 git commit -m "feat: IA consultiva DevOps, pruebas y demo GHCR"
-git push -u origin master
+git push -u origin main
 ```
 
-> Reemplaza `USUARIO` con el usuario de GitHub y **no uses `git init` en un clon que ya contiene `.git/`**. Si ya existe un remoto, usa el remoto de tu repositorio y haz sólo add/commit/push. Para mostrar un Pull Request, trabaja en `feature/ia-devops`, sube con `git push -u origin feature/ia-devops` y abre el PR contra `master`.
+> Reemplaza `USUARIO` con el usuario de GitHub y **no uses `git init` en un clon que ya contiene `.git/`**. Si ya existe un remoto, usa el remoto de tu repositorio y haz sólo add/commit/push. Para mostrar un Pull Request, trabaja en `feature/ia-devops`, sube con `git push -u origin feature/ia-devops` y abre el PR contra `main`.
 
 ### 5.2. Configurar el secreto de la IA
 
-En GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Crea `OPENAI_API_KEY` con una clave de API válida. **Nunca la escribas en archivos, capturas, commits o logs**. El modelo predeterminado es `gpt-6-luna`, configurable mediante `OPENAI_MODEL` en el workflow o en el entorno local. Las solicitudes a una API de IA pueden generar costos y transferir la evidencia autorizada al proveedor; revisa esta decisión antes de habilitarla. No se usa la suscripción de ChatGPT como clave API.
+En GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Crea `GEMINI_API_KEY` con una clave de API válida. **Nunca la escribas en archivos, capturas, commits o logs**. El modelo predeterminado es `gemini-2.5-flash-lite`, configurable mediante `GEMINI_MODEL` en el workflow o en el entorno local. La modalidad gratuita de Gemini API está sujeta a cuotas y Google puede utilizar solicitudes/respuestas para mejorar sus productos; no enviar información sensible. El asistente no usa ChatGPT ni su suscripción.
 
 El workflow de IA sólo escribe reportes; **no hace cambios de código, merges o releases**. Los informes se muestran en **Summary** y en **Artifacts** del run. Se puede ejecutar sin clave para revisar la recolección de evidencia, pero entonces el estado será `NO_EJECUTADA_SIN_CLAVE`.
 
 ### 5.3. Verificar automatización de CI en push y PR
 
 1. Crear la rama `feature/ia-devops` y realizar un commit de una mejora documental.
-2. Ejecutar `git push -u origin feature/ia-devops` y abrir un Pull Request contra `master`.
+2. Ejecutar `git push -u origin feature/ia-devops` y abrir un Pull Request contra `main`.
 3. En la pestaña **Checks / Actions**, verificar **`IA DevOps - pruebas unitarias`**, los workflows originales `test`, `validate`, `ci` y la demo de imagen.
 4. Revisar que **la demo de imagen construye pero NO publica a GHCR desde el PR**.
-5. Después de revisar y aprobar, fusionar el PR a `master` o hacer push autorizado a la rama principal.
-6. En `master`, el workflow de la demo intentará crear una **imagen demostrativa** automáticamente en GHCR.
-7. Al terminar el workflow `test`, `IA DevOps - informe consultivo` se ejecuta por `workflow_run` (cuando está instalado en la rama predeterminada).
+5. Después de revisar y aprobar, fusionar el PR a `main` o hacer push autorizado a la rama principal.
+6. En `main`, el workflow de la demo intentará crear una **imagen demostrativa** automáticamente en GHCR.
+7. Para generar el informe de IA, ir manualmente a **Actions → IA DevOps - informe consultivo → Run workflow**. El modo predeterminado `demo_sintetica` usa un caso ficticio; si se desactiva, la API de Google no recibirá evidencias de un repositorio privado a menos que se marque la autorización expresa `allow_private_data`.
 
 ### 5.4. Imagen Docker automatizada en GHCR
 
 Ruta esperada: `ghcr.io/USUARIO/metadata-action-demo:latest` si el repo es `metadata-action`. El nombre exacto se calcula como `ghcr.io/OWNER/REPO-demo`, en minúsculas. Se crean también tags de rama/SHA o PR conforme a las reglas de Metadata Action.
 
-En GitHub: **Actions → Demo ejecutable Metadata Action + imagen GHCR → ejecución de `master` → Summary**. Copia imagen y digest. Después revisa **Packages** en el perfil del propietario. Si el paquete se crea privado, cambia su visibilidad a pública si necesitas enseñarlo sin iniciar sesión. El job requiere permiso `packages: write`; revisa la configuración del repositorio/organización si el registro rechaza el push.
+En GitHub: **Actions → Demo ejecutable Metadata Action + imagen GHCR → ejecución de `main` → Summary**. Copia imagen y digest. Después revisa **Packages** en el perfil del propietario. Si el paquete se crea privado, cambia su visibilidad a pública si necesitas enseñarlo sin iniciar sesión. El job requiere permiso `packages: write`; revisa la configuración del repositorio/organización si el registro rechaza el push.
 
 En un equipo con Docker instalado, para ejecutar la imagen **después** de publicarla:
 
@@ -159,7 +159,7 @@ No se incluyen capturas ficticias de GitHub. Toma capturas reales desde la cuent
 | E4 | GitHub > Actions > test/validate/ci | Pruebas originales y ejecución de CI. |
 | E5 | GitHub > Actions > IA DevOps - informe consultivo > Summary | `IA_REAL_EJECUTADA` y análisis de un problema REAL (tras configurar la clave). |
 | E6 | GitHub > Actions > Demo ejecutable Metadata Action + imagen GHCR > Summary | Resultado de `uses: ./` y tags generados. |
-| E7 | GitHub > Packages / GHCR | Imagen publicada y tags, después de un push a master. |
+| E7 | GitHub > Packages / GHCR | Imagen publicada y tags, después de un push a main. |
 | E8 | Job de demo > Ejecutar contenedor | Salida de `docker run`. |
 | E9 | Issue desde plantilla de mantenimiento | Clasificación y evidencia de un bug documentado. |
 | E10 | PR > Checks antes y después de corregir un error controlado | Demostrar que el CI evita integrar código defectuoso. |
@@ -172,18 +172,57 @@ Para un experimento seguro, crea una rama temporal de demostración y cambia una
 
 ## 10. Seguridad y limitaciones
 
-- El programa sólo realiza consultas de lectura a GitHub y llama a la API de IA si existe `OPENAI_API_KEY`.
-- **Por defecto no exporta logs completos al proveedor**. Puede consultarse información de jobs y steps, títulos/cuerpos de Issues o PRs autorizados. La opción `AI_INCLUDE_LOGS=true` debe habilitarse únicamente después de revisar confidencialidad y redactar secretos.
+- El programa sólo realiza consultas de lectura a GitHub y llama a la API de IA si existe `GEMINI_API_KEY`.
+- En repositorios privados el envío a Google Gemini requiere autorización explícita de cada ejecución. **Por defecto no exporta logs completos al proveedor**. Puede consultarse información de jobs y steps, títulos/cuerpos de Issues o PRs autorizados. La opción `AI_INCLUDE_LOGS=true` debe habilitarse únicamente después de revisar confidencialidad y redactar secretos.
 - Hay filtros básicos de credenciales y límites de tamaño, pero ningún filtro automatizado garantiza eliminar todos los datos sensibles.
 - Los textos de Issues, PR y logs son entradas **no confiables**. El agente los trata como evidencia, no como instrucciones.
-- No se ejecuta código de Pull Requests ajenos desde el workflow privilegiado `workflow_run`: éste usa el checkout de la rama principal.
-- No se exponen secrets a un job de PR que publique imágenes; la publicación GHCR ocurre únicamente en `master`.
+- El informe Gemini se ejecuta manualmente en la rama autorizada, y el secreto no se facilita a los workflows de Pull Requests externos.
+- No se exponen secrets a un job de PR que publique imágenes; la publicación GHCR ocurre únicamente en `main`.
 - Las validaciones originales continúan siendo la autoridad. La **IA no modifica ni aprueba**: genera únicamente una recomendación documentada.
 
 ## 11. Archivos nuevos y archivos conservados
 
 **Se agregan**: `tools/ai_devops.py`, `tests_ai/`, dos ejemplos JSON, tres workflows, imagen Docker demostrativa, formulario de mantenimiento, plantilla PR y documentación con imágenes.
 
-**Se conserva sin cambios**: `src/`, `__tests__/` del proyecto original, `dist/index.cjs`, `action.yml`, `docker-bake.hcl`, workflows originales, `package.json`, `yarn.lock`.
+**Se conserva sin cambios la lógica principal**: `src/`, `__tests__/` del proyecto original, `dist/index.cjs`, `action.yml`, `docker-bake.hcl`, `package.json`, `yarn.lock`. Algunos workflows originales incluyen correcciones previas de rama `main` y permisos de análisis de seguridad, documentadas aparte.
 
-**Se modifica únicamente** `.gitignore` para ignorar informes locales y cachés. El motor de Metadata Action no recibe dependencias ni llamadas LLM: los tags siguen generándose de forma determinista.
+**Los cambios adicionales al asistente** comprenden el proveedor Gemini, el secreto y controles de privacidad en el workflow manual, más pruebas y documentación; `.gitignore` ignora informes locales y cachés. El motor de Metadata Action no recibe dependencias ni llamadas LLM: los tags siguen generándose de forma determinista.
+
+
+## Migración a Google AI Studio (Gemini API) — modalidad gratuita
+
+Esta adaptación utiliza **Google AI Studio / Gemini Developer API** (no Vertex AI ni
+recursos de Google Cloud de pago), con el modelo por defecto
+`gemini-2.5-flash-lite`, sujeto a cuota y disponibilidad del nivel gratuito.
+
+1. Crear la clave en https://aistudio.google.com/app/apikey y no publicarla.
+2. En GitHub: **Settings > Secrets and variables > Actions** crear
+   `GEMINI_API_KEY` como Repository secret.
+3. Ir a **Actions > IA DevOps - informe consultivo > Run workflow**;
+   elegir el modo y target. El workflow sólo es **manual** para no consumir
+   la cuota gratuita con cada push o ejecución de pruebas.
+4. **Repositorio privado:** Google puede utilizar el contenido enviado en el
+   nivel gratuito para mejorar sus productos, incluso con revisión humana.
+   Por defecto no se envía evidencia de un repositorio privado. Sólo se
+   permite si se marca `allow_private_data` y el propietario lo autoriza.
+   No enviar secretos, logs sensibles, información de clientes ni datos personales.
+5. Descargar el artefacto `informe-ia-devops-*`, verificando que el informe
+   diga `IA_REAL_EJECUTADA` para presentar evidencia de inferencia.
+
+Para demostrar una inferencia real sin exponer datos privados, usar localmente
+`--input-file` con los ejemplos sintéticos y `GEMINI_API_KEY` configurada;
+indicar que el caso de entrada es sintético y no atribuirlo a GitHub.
+
+Las **15 pruebas originales** se mantienen y se agregan pruebas para la
+protección de repositorios privados. Las pruebas usan mocks: no consumen API.
+
+Limitaciones: Google aplica cuotas al nivel gratuito, el acceso puede variar
+por región/modelo y la modalidad gratuita no garantiza privacidad para
+información confidencial. Si se requiere privacidad contractual, revisar
+las condiciones del nivel de pago.
+
+Fuentes oficiales:
+- https://ai.google.dev/gemini-api/docs/pricing
+- https://ai.google.dev/gemini-api/docs/rate-limits
+- https://ai.google.dev/gemini-api/terms
+- https://ai.google.dev/gemini-api/docs/api-key

@@ -1,11 +1,8 @@
 name: IA DevOps - informe consultivo
 
-# workflow_run usa el código de la rama principal, nunca ejecuta código del PR.
-# Sin OPENAI_API_KEY produce sólo un informe de evidencia, NO resultados de IA.
+# Ejecución manual para controlar la cuota gratuita y la privacidad de datos.
+# Sin GEMINI_API_KEY produce sólo informe de evidencia (no IA real).
 on:
-  workflow_run:
-    workflows: [test]
-    types: [completed]
   workflow_dispatch:
     inputs:
       mode:
@@ -23,6 +20,16 @@ on:
           - iac
           - mantenimiento
           - kanban
+      demo_sintetica:
+        description: "Ejemplo sin datos privados (genera respuesta real de Gemini sobre caso sintético)"
+        required: true
+        default: true
+        type: boolean
+      allow_private_data:
+        description: "Autorizo enviar datos de este repositorio privado a la API gratuita de Google (pueden usarse para mejorar productos)"
+        required: true
+        default: false
+        type: boolean
       target:
         description: 'Nº de issue/PR/run o tag de release; puede dejarse vacío para ciertos modos'
         required: false
@@ -46,20 +53,31 @@ jobs:
       - name: Analizar evidencia y generar informe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: gpt-6-luna
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash-lite
+          AI_REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+          AI_ALLOW_PRIVATE_DATA: ${{ inputs.allow_private_data }}
+          AI_DEMO_SINTETICA: ${{ inputs.demo_sintetica }}
           AI_INCLUDE_LOGS: 'false' # cambiar a true sólo tras revisar privacidad de logs
           AI_MODE: ${{ inputs.mode }}
           AI_TARGET: ${{ inputs.target }}
         shell: bash
         run: |
-          python3 tools/ai_devops.py \
-            --mode "${AI_MODE:-ci}" \
-            --target "${AI_TARGET:-}" \
-            --output artifacts/informe-ia.md
+          if [[ "${AI_DEMO_SINTETICA:-true}" == "true" ]]; then
+            echo 'Modo demostración: datos sintéticos del repositorio, sin enviar issues privados.'
+            python3 tools/ai_devops.py \
+              --mode mantenimiento \
+              --input-file examples/ia/issue-mantenimiento.json \
+              --output artifacts/informe-ia.md
+          else
+            python3 tools/ai_devops.py \
+              --mode "${AI_MODE:-ci}" \
+              --target "${AI_TARGET:-}" \
+              --output artifacts/informe-ia.md
+          fi
           cat artifacts/informe-ia.md >> "$GITHUB_STEP_SUMMARY"
           if ! grep -q 'IA_REAL_EJECUTADA' artifacts/informe-ia.md; then
-            echo '::warning::IA NO ejecutada: falta OPENAI_API_KEY o modo dry-run. No presentar este informe como inferencia real.'
+            echo '::warning::IA NO ejecutada: revisa GEMINI_API_KEY o autorización para repo privado. No presentarlo como inferencia real.'
           fi
 
       - name: Guardar evidencia de la ejecución

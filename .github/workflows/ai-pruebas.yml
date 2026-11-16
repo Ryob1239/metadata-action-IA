@@ -2,7 +2,7 @@ name: IA DevOps - pruebas unitarias
 
 on:
   push:
-    branches: [master, 'releases/v*']
+    branches: [main, 'releases/v*']
   pull_request:
   workflow_dispatch:
 
