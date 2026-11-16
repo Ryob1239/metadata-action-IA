@@ -30,7 +30,7 @@ MODES = {
 }
 MAX_INPUT_CHARS = 12000
 MAX_LOG_CHARS = 3500
-MODEL = "gemini-2.5-flash-lite"
+MODEL = "gemini-3.5-flash-lite"
 
 
 def redact_sensitive(value: str) -> str:
@@ -44,8 +44,6 @@ def redact_sensitive(value: str) -> str:
         (r"(?i)\b(?:Bearer|Basic)\s+[A-Za-z0-9_+=./~\-]{12,}", "[CREDENCIAL_OCULTA]"),
         (r"(?i)\b(?:Authorization|x-api-key|api[_-]?key|password|token|secret)\s*[:=]\s*[^\s,;\]\}]+", "[SECRETO_OCULTO]"),
         (r"\b(?:github_pat_|gh[pousr]_|sk-(?:proj-)?)[A-Za-z0-9_\-]{10,}", "[TOKEN_OCULTO]"),
-        (r"\bAIza[A-Za-z0-9_\-]{30,}", "[TOKEN_GOOGLE_OCULTO]"),
-        (r"(?i)\bGEMINI_API_KEY\s*[:=]\s*[^\s,;\]\}]+", "[SECRETO_OCULTO]"),
         (r"\bAIza[A-Za-z0-9_\-]{30,}", "[TOKEN_GOOGLE_OCULTO]"),
         (r"(?i)\bGEMINI_API_KEY\s*[:=]\s*[^\s,;\]\}]+", "[SECRETO_OCULTO]"),
         (r"(?i)https?://[^/\s:@]+:[^@/\s]+@", "https://[CREDENCIAL_OCULTA]@"),
@@ -293,6 +291,8 @@ def main(argv: list[str] | None = None) -> int:
             pass
         description = redact_sensitive(detail or str(exc))[:1000]
         print(f"ERROR IA DevOps: HTTP {exc.code}: {description}", file=sys.stderr)
+        if exc.code == 404:
+            print("El modelo puede no estar disponible para este proyecto. Revisar GEMINI_MODEL y los modelos habilitados en AI Studio.", file=sys.stderr)
         if exc.code == 429:
             print("Revisar Gemini AI Studio > Rate limits / Usage para el proyecto y modelo de la API Key. No reintentar ciegamente si la cuota disponible es 0.", file=sys.stderr)
         return 1

@@ -36,9 +36,6 @@ class TestAsistenteIA(unittest.TestCase):
     def test_oculta_token_google(self):
         self.assertNotIn("AIza012345678901234567890123456789012", redact_sensitive("GEMINI_API_KEY=AIza012345678901234567890123456789012"))
 
-    def test_oculta_token_google(self):
-        self.assertNotIn("AIza012345678901234567890123456789012", redact_sensitive("GEMINI_API_KEY=AIza012345678901234567890123456789012"))
-
     def test_oculta_bearer(self):
         self.assertIn("[CREDENCIAL_OCULTA]", redact_sensitive("Authorization: Bearer abcdef012345678901234"))
 
@@ -67,7 +64,7 @@ class TestAsistenteIA(unittest.TestCase):
         self.assertIn("Una prueba falló", analysis)
         self.assertIn("systemInstruction", captured["body"])
         self.assertEqual("user", captured["body"]["contents"][0]["role"])
-        self.assertIn("/v1beta/models/gemini-2.5-flash-lite:generateContent", captured["url"])
+        self.assertIn("/v1beta/models/gemini-3.5-flash-lite:generateContent", captured["url"])
 
     def test_consulta_kanban_solo_issues(self):
         items = [{"number": 1, "title": "Bug", "labels": [], "created_at": "2026-11-11"},
@@ -106,12 +103,12 @@ class TestAsistenteIA(unittest.TestCase):
             fetch_evidence("kanban", "../repo/../../secret", "token", "", {})
 
     def test_informe_distingue_ia_no_ejecutada(self):
-        report = compose_report("ci", {"input": {"error": "falla"}}, None, status="NO_EJECUTADA_SIN_CLAVE", model="gemini-2.5-flash-lite")
+        report = compose_report("ci", {"input": {"error": "falla"}}, None, status="NO_EJECUTADA_SIN_CLAVE", model="gemini-3.5-flash-lite")
         self.assertIn("No se realizó inferencia de IA", report)
         self.assertIn("NO_EJECUTADA_SIN_CLAVE", report)
 
     def test_informe_muestra_evidencia_run(self):
-        report = compose_report("ci", {"run": {"name": "test", "conclusion": "failure", "html_url": "https://github.com/x/y/actions/runs/42"}}, "## Hipótesis", status="IA_REAL_EJECUTADA", model="gemini-2.5-flash-lite")
+        report = compose_report("ci", {"run": {"name": "test", "conclusion": "failure", "html_url": "https://github.com/x/y/actions/runs/42"}}, "## Hipótesis", status="IA_REAL_EJECUTADA", model="gemini-3.5-flash-lite")
         self.assertIn("github.com/x/y/actions/runs/42", report)
         self.assertIn("IA_REAL_EJECUTADA", report)
 
@@ -156,7 +153,7 @@ class TestAsistenteIA(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             input_path = Path(tmp) / "sample.json"
             input_path.write_text('{"test": "sin datos privados"}', encoding="utf-8")
-            response = io.BytesIO(json.dumps({"error": {"status": "RESOURCE_EXHAUSTED", "message": "limit: 0 for gemini-2.5-flash-lite"}}).encode())
+            response = io.BytesIO(json.dumps({"error": {"status": "RESOURCE_EXHAUSTED", "message": "limit: 0 for gemini-3.5-flash-lite"}}).encode())
             error = HTTPError("https://generativelanguage.googleapis.com", 429, "Too Many Requests", {}, response)
             with patch.dict(os.environ, {"GEMINI_API_KEY": "clave_supersecreta"}):
                 with patch("tools.ai_devops.call_ai", side_effect=error):
@@ -168,6 +165,26 @@ class TestAsistenteIA(unittest.TestCase):
             self.assertIn("limit: 0", log)
             self.assertNotIn("clave_supersecreta", log)
 
+
+    def test_error_404_modelo_no_disponible_sin_clave(self):
+        from urllib.error import HTTPError
+        with tempfile.TemporaryDirectory() as tmp:
+            input_path = Path(tmp) / "sample.json"
+            input_path.write_text('{"test": "sin datos privados"}', encoding="utf-8")
+            response = io.BytesIO(json.dumps({"error": {
+                "status": "NOT_FOUND",
+                "message": "This model models/gemini-2.5-flash-lite is no longer available to new users."
+            }}).encode())
+            error = HTTPError("https://generativelanguage.googleapis.com", 404, "Not Found", {}, response)
+            with patch.dict(os.environ, {"GEMINI_API_KEY": "clave_supersecreta"}):
+                with patch("tools.ai_devops.call_ai", side_effect=error):
+                    with patch("sys.stderr", new_callable=io.StringIO) as stderr:
+                        code = main(["--mode", "mantenimiento", "--input-file", str(input_path)])
+            self.assertEqual(1, code)
+            log = stderr.getvalue()
+            self.assertIn("NOT_FOUND", log)
+            self.assertIn("GEMINI_MODEL", log)
+            self.assertNotIn("clave_supersecreta", log)
 
 if __name__ == "__main__":
     unittest.main()
