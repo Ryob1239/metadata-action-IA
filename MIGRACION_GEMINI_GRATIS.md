@@ -24,7 +24,7 @@ Docker Bake y los workflows originales. El cambio ocurre en la capa consultiva d
 7. Consulta **Actions > último run > Summary** y descarga el artefacto
    `informe-ia-devops-...`. Busca la marca `IA_REAL_EJECUTADA`.
 
-**Modelo predeterminado**: `gemini-2.5-flash-lite` (nivel gratuito sujeto a cuota).
+**Modelo predeterminado actualizado (16-nov-2026)**: `gemini-3.5-flash-lite` (nivel gratuito sujeto a cuota y disponibilidad del proyecto). Google restringe el acceso de nuevos usuarios a modelos de la familia 2.5. El endpoint `generateContent` sigue soportado, aunque Google recomienda migrar progresivamente a Interactions API.
 No requiere activar Vertex AI ni Cloud Billing para su uso en modalidad gratis.
 No se garantiza que funcione gratuitamente para todas las cuentas/regiones.
 
@@ -57,3 +57,9 @@ python3 -m unittest discover -s tests_ai -v
 
 Referencias: https://ai.google.dev/gemini-api/docs/pricing y
 https://ai.google.dev/gemini-api/terms
+
+## Incidencia real: modelo 2.5 ya no disponible para nuevas cuentas (HTTP 404)
+
+En el workflow de GitHub Actions el error `NOT_FOUND` para `gemini-2.5-flash-lite` no era un problema del secreto ni del cupo por minuto: Google informó que el modelo anterior no está disponible para usuarios nuevos. Esta corrección actualiza el valor de `GEMINI_MODEL` y el valor predeterminado en `tools/ai_devops.py` a `gemini-3.5-flash-lite`, además de actualizar los tests. Debe validarse con una solicitud real a Gemini desde GitHub Actions.
+
+Para la evidencia académica, conserva capturas del error anterior y del resultado posterior, distinguiendo respuesta real `IA_REAL_EJECUTADA` de pruebas offline. La corrida de GHCR de `main` es independiente del asistente IA.

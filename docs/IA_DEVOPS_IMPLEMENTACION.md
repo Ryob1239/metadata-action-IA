@@ -93,7 +93,7 @@ git push -u origin main
 
 ### 5.2. Configurar el secreto de la IA
 
-En GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Crea `GEMINI_API_KEY` con una clave de API válida. **Nunca la escribas en archivos, capturas, commits o logs**. El modelo predeterminado es `gemini-2.5-flash-lite`, configurable mediante `GEMINI_MODEL` en el workflow o en el entorno local. La modalidad gratuita de Gemini API está sujeta a cuotas y Google puede utilizar solicitudes/respuestas para mejorar sus productos; no enviar información sensible. El asistente no usa ChatGPT ni su suscripción.
+En GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Crea `GEMINI_API_KEY` con una clave de API válida. **Nunca la escribas en archivos, capturas, commits o logs**. El modelo predeterminado es `gemini-3.5-flash-lite`, configurable mediante `GEMINI_MODEL` en el workflow o en el entorno local. La modalidad gratuita de Gemini API está sujeta a cuotas y Google puede utilizar solicitudes/respuestas para mejorar sus productos; no enviar información sensible. El asistente no usa ChatGPT ni su suscripción.
 
 El workflow de IA sólo escribe reportes; **no hace cambios de código, merges o releases**. Los informes se muestran en **Summary** y en **Artifacts** del run. Se puede ejecutar sin clave para revisar la recolección de evidencia, pero entonces el estado será `NO_EJECUTADA_SIN_CLAVE`.
 
@@ -193,7 +193,7 @@ Para un experimento seguro, crea una rama temporal de demostración y cambia una
 
 Esta adaptación utiliza **Google AI Studio / Gemini Developer API** (no Vertex AI ni
 recursos de Google Cloud de pago), con el modelo por defecto
-`gemini-2.5-flash-lite`, sujeto a cuota y disponibilidad del nivel gratuito.
+`gemini-3.5-flash-lite`, sujeto a cuota y disponibilidad del nivel gratuito.
 
 1. Crear la clave en https://aistudio.google.com/app/apikey y no publicarla.
 2. En GitHub: **Settings > Secrets and variables > Actions** crear
@@ -226,3 +226,7 @@ Fuentes oficiales:
 - https://ai.google.dev/gemini-api/docs/rate-limits
 - https://ai.google.dev/gemini-api/terms
 - https://ai.google.dev/gemini-api/docs/api-key
+
+## Actualización de mantenimiento: modelo Gemini (16-nov-2026)
+
+El modelo `gemini-2.5-flash-lite` produjo HTTP 404 (`NOT_FOUND`) para una cuenta nueva. Se sustituyó por `gemini-3.5-flash-lite` tanto en el workflow como en el asistente, sin modificar `src/`, `dist/` o la lógica de Docker Metadata Action. El endpoint `generateContent` se mantiene de forma conservadora porque Google aún lo soporta; la migración futura a Interactions API debe hacerse como cambio independiente con pruebas. Las pruebas locales de esta corrección no sustituyen una llamada real.
