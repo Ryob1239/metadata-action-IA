@@ -16,6 +16,8 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+import random
+import time
 
 MODES = {
     "desarrollo": ("1. Desarrollo continuo", "Clasifica el issue, sugiere área de código afectada y pasos de revisión."),
@@ -179,8 +181,39 @@ def call_ai(mode: str, evidence: dict, *, key: str, model: str = MODEL, opener=u
             "User-Agent": "metadata-action-ai-devops-demo",
         },
     )
-    with opener(req, timeout=55) as response:
-        reply = json.loads(response.read(250_000).decode("utf-8"))
+    # Reintentos automáticos ante saturación temporal de Gemini
+    max_intentos = 4
+
+    for intento in range(max_intentos):
+        try:
+            with opener(req, timeout=55) as response:
+                reply = json.loads(
+                    response.read(250_000).decode("utf-8")
+                )
+
+            print("✅ Respuesta de Gemini recibida correctamente.")
+            break
+
+        except HTTPError as error:
+
+            # Solamente reintentar errores temporales 503
+            if error.code != 503:
+                raise
+
+            # Si agotamos los intentos, conservar el error real
+            if intento == max_intentos - 1:
+                print("❌ Gemini continúa saturado.")
+                raise
+
+            # Espera exponencial con variación aleatoria
+            espera = (2 ** (intento + 1)) + random.uniform(0, 1)
+
+            print(
+                f"⚠️ Gemini saturado (HTTP 503). "
+                f"Reintento {intento + 2}/{max_intentos}."
+            )
+
+            time.sleep(espera)
     candidates = reply.get("candidates") or []
     parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
     answer = "\n".join(p.get("text", "") for p in parts if isinstance(p, dict) and p.get("text"))
