@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "daily"
     cooldown:
-      default-days: 2
+      default-days: 7
     groups:
       crazy-max-dot-github:
         patterns:
@@ -21,7 +21,7 @@ updates:
     schedule:
       interval: "daily"
     cooldown:
-      default-days: 2
+      default-days: 7
       exclude:
         - "@docker/actions-toolkit"
     versioning-strategy: "increase"
