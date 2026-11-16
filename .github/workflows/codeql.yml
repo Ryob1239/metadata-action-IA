@@ -15,6 +15,8 @@ env:
 
 jobs:
   analyze:
+    # Code Scanning gratuito solo en repositorios publicos; no intentar subir SARIF en privados.
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,3 +47,37 @@ jobs:
         uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           category: "/language:javascript-typescript"
+
+  semgrep-privado:
+    name: Semgrep CE - SAST para repositorios privados
+    if: ${{ github.event.repository.private == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout seguro
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Preparar Semgrep Community Edition
+        shell: bash
+        run: |
+          python3 -m venv "$RUNNER_TEMP/semgrep-env"
+          "$RUNNER_TEMP/semgrep-env/bin/pip" install --disable-pip-version-check semgrep
+      - name: Escanear TypeScript y Python (falla si hay hallazgos)
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          "$RUNNER_TEMP/semgrep-env/bin/semgrep" scan \
+            --config=p/javascript \
+            --config=p/python \
+            --error --json --output artifacts/semgrep.json src tools
+      - name: Guardar reporte de seguridad
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: seguridad-semgrep-${{ github.run_id }}
+          path: artifacts/semgrep.json
+          if-no-files-found: warn
+          retention-days: 14

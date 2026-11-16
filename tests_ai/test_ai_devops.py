@@ -150,6 +150,24 @@ class TestAsistenteIA(unittest.TestCase):
             self.assertEqual(0, code)
             self.assertIn("NO_EJECUTADA_SIN_CLAVE", output.read_text(encoding="utf-8"))
 
+    def test_error_429_gemini_muestra_cuota_sin_clave(self):
+        from urllib.error import HTTPError
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            input_path = Path(tmp) / "sample.json"
+            input_path.write_text('{"test": "sin datos privados"}', encoding="utf-8")
+            response = io.BytesIO(json.dumps({"error": {"status": "RESOURCE_EXHAUSTED", "message": "limit: 0 for gemini-2.5-flash-lite"}}).encode())
+            error = HTTPError("https://generativelanguage.googleapis.com", 429, "Too Many Requests", {}, response)
+            with patch.dict(os.environ, {"GEMINI_API_KEY": "clave_supersecreta"}):
+                with patch("tools.ai_devops.call_ai", side_effect=error):
+                    with patch("sys.stderr", new_callable=io.StringIO) as stderr:
+                        code = main(["--mode", "mantenimiento", "--input-file", str(input_path)])
+            self.assertEqual(1, code)
+            log = stderr.getvalue()
+            self.assertIn("RESOURCE_EXHAUSTED", log)
+            self.assertIn("limit: 0", log)
+            self.assertNotIn("clave_supersecreta", log)
+
 
 if __name__ == "__main__":
     unittest.main()

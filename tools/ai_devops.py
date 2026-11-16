@@ -280,7 +280,23 @@ def main(argv: list[str] | None = None) -> int:
         output.write_text(report, encoding="utf-8")
         print(f"Informe generado: {output} | Estado: {status}")
         return 0
-    except (ValueError, RuntimeError, OSError, URLError, HTTPError, json.JSONDecodeError) as exc:
+    except HTTPError as exc:
+        # El mensaje HTTP 429 no distingue por si solo RPM, TPM, RPD o cuota = 0.
+        # Consultar el cuerpo JSON permite ver la razon sin imprimir claves ni prompts.
+        detail = ""
+        try:
+            payload = json.loads(exc.read(8192).decode("utf-8", errors="replace"))
+            obj = payload.get("error", {}) if isinstance(payload, dict) else {}
+            if isinstance(obj, dict):
+                detail = f"{obj.get('status', '')}: {obj.get('message', '')}"
+        except (ValueError, OSError, UnicodeError, AttributeError):
+            pass
+        description = redact_sensitive(detail or str(exc))[:1000]
+        print(f"ERROR IA DevOps: HTTP {exc.code}: {description}", file=sys.stderr)
+        if exc.code == 429:
+            print("Revisar Gemini AI Studio > Rate limits / Usage para el proyecto y modelo de la API Key. No reintentar ciegamente si la cuota disponible es 0.", file=sys.stderr)
+        return 1
+    except (ValueError, RuntimeError, OSError, URLError, json.JSONDecodeError) as exc:
         print(f"ERROR IA DevOps: {type(exc).__name__}: {redact_sensitive(str(exc))[:500]}", file=sys.stderr)
         return 1
 
