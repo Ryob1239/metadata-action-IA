@@ -30,7 +30,7 @@ MODES = {
 }
 MAX_INPUT_CHARS = 12000
 MAX_LOG_CHARS = 3500
-MODEL = "gpt-6-luna"
+MODEL = "gemini-2.5-flash-lite"
 
 
 def redact_sensitive(value: str) -> str:
@@ -44,6 +44,10 @@ def redact_sensitive(value: str) -> str:
         (r"(?i)\b(?:Bearer|Basic)\s+[A-Za-z0-9_+=./~\-]{12,}", "[CREDENCIAL_OCULTA]"),
         (r"(?i)\b(?:Authorization|x-api-key|api[_-]?key|password|token|secret)\s*[:=]\s*[^\s,;\]\}]+", "[SECRETO_OCULTO]"),
         (r"\b(?:github_pat_|gh[pousr]_|sk-(?:proj-)?)[A-Za-z0-9_\-]{10,}", "[TOKEN_OCULTO]"),
+        (r"\bAIza[A-Za-z0-9_\-]{30,}", "[TOKEN_GOOGLE_OCULTO]"),
+        (r"(?i)\bGEMINI_API_KEY\s*[:=]\s*[^\s,;\]\}]+", "[SECRETO_OCULTO]"),
+        (r"\bAIza[A-Za-z0-9_\-]{30,}", "[TOKEN_GOOGLE_OCULTO]"),
+        (r"(?i)\bGEMINI_API_KEY\s*[:=]\s*[^\s,;\]\}]+", "[SECRETO_OCULTO]"),
         (r"(?i)https?://[^/\s:@]+:[^@/\s]+@", "https://[CREDENCIAL_OCULTA]@"),
     ]
     for pattern, replacement in rules:
@@ -152,26 +156,45 @@ def build_messages(mode: str, evidence: dict) -> list[dict]:
 
 
 def call_ai(mode: str, evidence: dict, *, key: str, model: str = MODEL, opener=urlopen) -> str:
+    """Consulta Gemini Developer API (REST) sin dependencias de terceros.
+
+    Sólo envía evidencia explícitamente autorizada por main(). No actualiza GitHub.
+    El modelo puede sugerir hipótesis; las pruebas deterministas siguen siendo autoridad.
+    """
     if not key:
-        raise ValueError("Falta OPENAI_API_KEY")
-    body = {"model": model, "messages": build_messages(mode, evidence), "max_completion_tokens": 1200, "store": False}
-    # Modelos de razonamiento eficientes admiten este ajuste; no se utiliza temperature.
-    if model.startswith("gpt-6"):
-        body["reasoning_effort"] = "none"
-    data = json.dumps(body, ensure_ascii=False).encode("utf-8")
-    req = Request("https://api.openai.com/v1/chat/completions", data=data, method="POST", headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json", "User-Agent": "metadata-action-ai-devops-demo"})
+        raise ValueError("Falta GEMINI_API_KEY")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", model):
+        raise ValueError("Nombre de modelo Gemini inválido")
+    messages = build_messages(mode, evidence)
+    body = {
+        "systemInstruction": {"parts": [{"text": messages[0]["content"]}]},
+        "contents": [{"role": "user", "parts": [{"text": messages[1]["content"]}]}],
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1800},
+    }
+    req = Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        method="POST",
+        headers={
+            "x-goog-api-key": key,
+            "Content-Type": "application/json",
+            "User-Agent": "metadata-action-ai-devops-demo",
+        },
+    )
     with opener(req, timeout=55) as response:
         reply = json.loads(response.read(250_000).decode("utf-8"))
-    choices = reply.get("choices", [])
-    if not choices or not choices[0].get("message", {}).get("content"):
-        raise RuntimeError("El modelo no devolvió un texto utilizable")
-    return redact_sensitive(choices[0]["message"]["content"].strip())
+    candidates = reply.get("candidates") or []
+    parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+    answer = "\n".join(p.get("text", "") for p in parts if isinstance(p, dict) and p.get("text"))
+    if not answer.strip():
+        raise RuntimeError("Gemini no devolvió texto utilizable: verifica el modelo y la respuesta de seguridad")
+    return redact_sensitive(answer.strip())
 
 
 def compose_report(mode: str, evidence: dict, analysis: str | None, *, status: str, model: str, error: str = "") -> str:
     title, _ = MODES[mode]
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    lines = [f"# Informe IA DevOps — {title}", "", f"**Fecha:** {stamp}", f"**Estado IA:** {status}", f"**Modelo configurado:** {model}", "", "## Evidencia disponible", ""]
+    lines = [f"# Informe IA DevOps — {title}", "", f"**Fecha:** {stamp}", f"**Estado IA:** {status}", f"**Proveedor de IA:** Google Gemini API", f"**Modelo configurado:** {model}", "", "## Evidencia disponible", ""]
     if evidence.get("run"):
         r = evidence["run"]
         lines += [f"- Workflow: {r.get('name', '?')} · estado: {r.get('conclusion', '?')}", f"- Run: {r.get('html_url', '(no informado)')}", f"- SHA: `{r.get('head_sha', '(no informado)')}`"]
@@ -205,7 +228,7 @@ def compose_report(mode: str, evidence: dict, analysis: str | None, *, status: s
     if analysis:
         lines.append(analysis)
     else:
-        lines += ["**No se realizó inferencia de IA.** Es necesario configurar el secreto `OPENAI_API_KEY` y ejecutar de nuevo.", "Las fuentes anteriores son evidencia estructurada recopilada, NO una respuesta generada por un modelo."]
+        lines += ["**No se realizó inferencia de IA.** Comprueba `GEMINI_API_KEY`, el modo dry-run y la autorización expresa para datos de repositorios privados.", "Las fuentes anteriores son evidencia estructurada recopilada, NO una respuesta generada por un modelo."]
     if error:
         lines += ["", "**Aviso técnico:** " + redact_sensitive(error[:450])]
     lines += ["", "## Límites obligatorios", "", "- Este informe no reemplaza pruebas, revisión humana, CodeQL, Zizmor ni políticas de releases.", "- No se modificaron tags, releases, permisos ni estados de CI.", "- La lógica determinista de `src/` y `dist/index.cjs` no se reemplazó.", ""]
@@ -236,15 +259,21 @@ def main(argv: list[str] | None = None) -> int:
             if os.getenv("GITHUB_EVENT_PATH"):
                 event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
             evidence = fetch_evidence(args.mode, os.getenv("GITHUB_REPOSITORY", ""), os.getenv("GITHUB_TOKEN", ""), args.target, event)
-        key = os.getenv("OPENAI_API_KEY", "")
-        model = os.getenv("OPENAI_MODEL", MODEL)
+        key = os.getenv("GEMINI_API_KEY", "")
+        model = os.getenv("GEMINI_MODEL", MODEL)
         analysis = None
         status = "NO_EJECUTADA_SIN_CLAVE" if not key else "NO_EJECUTADA_DRY_RUN"
-        if key and not args.dry_run:
+        private_repo = os.getenv("AI_REPOSITORY_PRIVATE", "false").strip().lower() == "true"
+        allow_private = os.getenv("AI_ALLOW_PRIVATE_DATA", "false").strip().lower() == "true"
+        # En el nivel gratuito Google puede usar solicitudes/respuestas para mejorar
+        # sus productos. Para repositorios privados exige consentimiento por ejecución.
+        if args.dry_run:
+            status = "NO_EJECUTADA_DRY_RUN"
+        elif private_repo and not args.input_file and not allow_private:
+            status = "NO_EJECUTADA_PRIVACIDAD"
+        elif key:
             analysis = call_ai(args.mode, evidence, key=key, model=model)
             status = "IA_REAL_EJECUTADA"
-        elif args.dry_run:
-            status = "NO_EJECUTADA_DRY_RUN"
         report = compose_report(args.mode, evidence, analysis, status=status, model=model)
         output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)

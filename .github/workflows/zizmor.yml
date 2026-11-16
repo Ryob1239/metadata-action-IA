@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - 'master'
+      - 'main'
       - 'releases/v*'
     tags:
       - 'v*'
@@ -22,6 +22,7 @@ jobs:
     uses: crazy-max/.github/.github/workflows/zizmor.yml@f91220cba053bd54299ba645a599ee8ed436f222 # v1.11.0
     permissions:
       contents: read
+      actions: read
       security-events: write
     with:
       min-severity: medium

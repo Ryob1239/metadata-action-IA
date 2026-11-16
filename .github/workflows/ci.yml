@@ -12,7 +12,7 @@ on:
     - cron: '0 10 * * *'
   push:
     branches:
-      - 'master'
+      - 'main'
       - 'releases/v*'
     tags:
       - 'v*.*.*'
