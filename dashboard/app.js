@@ -146,9 +146,24 @@ function render(data) {
   const shaTag = Array.isArray(image.tags) ? image.tags.find(tag => tag.startsWith('sha-')) : undefined;
   setText('sha-tag', shaTag || 'SHA pendiente');
 
-  rowsTo('run-list', runs.filter(run => ['ci', 'cd', 'other'].includes(run.category)), 6, 'run');
-  rowsTo('ai-runs', runs.filter(run => run.category === 'ai'), 4, 'ai');
-  rowsTo('security-runs', runs.filter(run => run.category === 'security'), 4, 'security');
+  rowsTo(
+    'run-list',
+    runs.filter(run => ['ci', 'cd', 'other'].includes(run.category)),
+    6,
+    'run'
+  );
+  rowsTo(
+    'ai-runs',
+    runs.filter(run => run.category === 'ai'),
+    4,
+    'ai'
+  );
+  rowsTo(
+    'security-runs',
+    runs.filter(run => run.category === 'security'),
+    4,
+    'security'
+  );
 
   const bindings = {
     'nav-repo': repository.url,
