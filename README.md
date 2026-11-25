@@ -1,21 +1,36 @@
+<!-- Metadata Action IA: plataforma profesional / inicio -->
+# Metadata Action IA
 
-<!-- Metadata Action IA: inicio -->
-## Analista DevOps asistido por Gemini
+### Plataforma DevOps con integración continua, entregas OCI y análisis asistido por Gemini
 
-Esta edición integra un analista consultivo de **solo lectura** para los nueve procesos DevOps, con reportes verificables en Markdown/JSON, reintentos ante errores temporales de la API y pruebas independientes de la red.
+[![CI](https://github.com/Ryob1239/metadata-action-IA/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Ryob1239/metadata-action-IA/actions/workflows/ci.yml)
+[![Imagen OCI](https://github.com/Ryob1239/metadata-action-IA/actions/workflows/demo-imagen-ghcr.yml/badge.svg?branch=main)](https://github.com/Ryob1239/metadata-action-IA/actions/workflows/demo-imagen-ghcr.yml)
+[![Licencia](https://img.shields.io/badge/licencia-Apache--2.0-blue)](LICENSE)
 
-- [Especificación profesional y operación](docs/ASISTENTE_DEVOPS_PROFESIONAL.md)
-- [Mapa de capturas para el reporte](docs/GUIA_CAPTURAS_REPORTE.md)
-- [Ejecutar análisis desde GitHub Actions](.github/workflows/ai-devops.yml)
+**Metadata Action IA** combina el motor determinista de Docker Metadata Action, procesos CI/CD automatizados, una imagen OCI publicada en GitHub Container Registry y un asistente consultivo de **Google Gemini** para analizar información verificable del repositorio. Su propósito es facilitar la trazabilidad, validación, entrega y supervisión del software.
 
-La generación determinista de metadatos Docker permanece a cargo de esta GitHub Action. El asistente no modifica Pull Requests, releases ni estados de CI.
-<!-- Metadata Action IA: fin -->
+| Componente | Propósito | Evidencia |
+|---|---|---|
+| **CI · GitHub Actions** | Pruebas, lint, integración y controles de seguridad. | [Ejecuciones](https://github.com/Ryob1239/metadata-action-IA/actions) |
+| **CD · GHCR** | Construcción, versionado y publicación de una imagen OCI. | [Imagen publicada](https://github.com/Ryob1239/metadata-action-IA/pkgs/container/metadata-action-ia-demo) |
+| **Inspector OCI** | Descarga, arranque e inspección remotos en runners de GitHub. | [Ejecutar inspector](https://github.com/Ryob1239/metadata-action-IA/actions/workflows/inspeccionar-imagen-ghcr.yml) |
+| **Gemini DevOps** | Informes con evidencia, hipótesis y recomendaciones de solo lectura. | [Análisis inteligente](https://github.com/Ryob1239/metadata-action-IA/actions/workflows/ai-devops.yml) |
+| **Panel web** | Vista profesional de pipelines, imagen publicada, seguridad e IA. | [GitHub Pages](https://ryob1239.github.io/metadata-action-IA/) *(requiere activar Pages)* |
 
-[![GitHub release](https://img.shields.io/github/release/docker/metadata-action.svg?style=flat-square)](https://github.com/docker/metadata-action/releases/latest)
-[![GitHub marketplace](https://img.shields.io/badge/marketplace-docker--metadata--action-blue?logo=github&style=flat-square)](https://github.com/marketplace/actions/docker-metadata-action)
-[![CI workflow](https://img.shields.io/github/actions/workflow/status/docker/metadata-action/ci.yml?branch=master&label=ci&logo=github&style=flat-square)](https://github.com/docker/metadata-action/actions?workflow=ci)
-[![Test workflow](https://img.shields.io/github/actions/workflow/status/docker/metadata-action/test.yml?branch=master&label=test&logo=github&style=flat-square)](https://github.com/docker/metadata-action/actions?workflow=test)
-[![Codecov](https://img.shields.io/codecov/c/github/docker/metadata-action?logo=codecov&style=flat-square)](https://codecov.io/gh/docker/metadata-action)
+### Imagen OCI publicada
+
+```bash
+docker pull ghcr.io/ryob1239/metadata-action-ia-demo:latest
+docker run --rm ghcr.io/ryob1239/metadata-action-ia-demo:latest
+docker image inspect --format '{{json .Config.Labels}}' ghcr.io/ryob1239/metadata-action-ia-demo:latest
+```
+
+La imagen **contiene un programa Node.js de verificación de ejecución y metadatos**, no un servidor de Gemini ni el panel web. El análisis de IA se realiza por separado desde el workflow `ai-devops.yml` con permisos de lectura. La plataforma web es estática y no contiene claves API.
+
+**Documentación:** [Operación en GitHub](docs/PLATAFORMA_GITHUB.md) · [Ficha técnica de GHCR](docs/GHCR_PACKAGE.md) · [Analista DevOps](docs/ASISTENTE_DEVOPS_PROFESIONAL.md) · [Capturas académicas](docs/GUIA_CAPTURAS_REPORTE.md)
+
+> Basado en el proyecto abierto [Docker Metadata Action](https://github.com/docker/metadata-action), bajo licencia Apache-2.0. El código original de `src/` y `dist/index.cjs` se mantiene independiente del asistente.
+<!-- Metadata Action IA: plataforma profesional / fin -->
 
 ## About
 

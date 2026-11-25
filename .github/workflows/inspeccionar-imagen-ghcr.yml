@@ -1,0 +1,45 @@
+name: Docker | Ejecutar e inspeccionar imagen GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Etiqueta publicada en GHCR (latest, main, sha-xxxxxxx)'
+        type: string
+        required: true
+        default: 'latest'
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  inspeccionar:
+    name: Descargar, ejecutar e inspeccionar imagen OCI
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout de código aprobado
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Inspeccionar una etiqueta válida del paquete
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/inspeccionar_imagen.py --tag "$IMAGE_TAG" --repo "$REPOSITORY" \
+            --out artifacts/inspeccion-imagen.json \
+            --markdown artifacts/inspeccion-imagen.md
+          cat artifacts/inspeccion-imagen.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Conservar reporte de ejecución y metadatos
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: inspeccion-ghcr-${{ github.run_id }}
+          path: artifacts/inspeccion-imagen.*
+          if-no-files-found: warn
+          retention-days: 30

@@ -40,8 +40,11 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
           labels: |
-            org.opencontainers.image.title=Metadata Action - demostración académica
-            org.opencontainers.image.description=Contenedor demostrativo etiquetado por la Action original
+            org.opencontainers.image.title=Metadata Action IA | Validación OCI automatizada
+            org.opencontainers.image.description=Imagen OCI ejecutable para verificar tags, labels, publicación y funcionamiento del artefacto de CI/CD. El analista Gemini funciona por separado.
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}/blob/main/docs/GHCR_PACKAGE.md
+            org.opencontainers.image.licenses=Apache-2.0
 
       - name: Validar tags y salidas JSON de la Action
         env:
@@ -105,8 +108,11 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest
           labels: |
-            org.opencontainers.image.title=Metadata Action - demostración académica
-            org.opencontainers.image.description=Contenedor demostrativo etiquetado por la Action original
+            org.opencontainers.image.title=Metadata Action IA | Validación OCI automatizada
+            org.opencontainers.image.description=Imagen OCI ejecutable para verificar tags, labels, publicación y funcionamiento del artefacto de CI/CD. El analista Gemini funciona por separado.
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}/blob/main/docs/GHCR_PACKAGE.md
+            org.opencontainers.image.licenses=Apache-2.0
 
       - name: Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
