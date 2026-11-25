@@ -11,7 +11,7 @@ from urllib.error import HTTPError, URLError
 from tools.ai_devops import (
     AssistantError, MODES, ServiceError, build_messages, call_ai, compose_report,
     fetch_evidence, main, parse_service_error, redact_sensitive, report_sources,
-    sanitize_data, valid_repo,
+    sanitize_data, valid_repo, parse_structured_analysis, observed_facts, ANALYSIS_FIELDS,
 )
 
 class FakeResponse:
@@ -22,7 +22,8 @@ class FakeResponse:
 
 
 def gemini_ok():
-    return FakeResponse({"candidates": [{"content": {"parts": [{"text": "## Hechos\nPrueba aprobada"}]}}]})
+    data = {key: ["Prueba aprobada en simulación"] for key in ANALYSIS_FIELDS}
+    return FakeResponse({"candidates": [{"content": {"parts": [{"text": json.dumps(data)}]}}]})
 
 
 def http_error(code, body, retry_after=None):
@@ -77,7 +78,7 @@ class TestAnalistaDevOps(unittest.TestCase):
             calls.append(req)
             return gemini_ok()
         result = call_ai("ci", {"run": {"conclusion": "failure"}}, key="dummy", opener=mock)
-        self.assertIn("Prueba aprobada", result)
+        self.assertIn("Prueba aprobada", result["hechos_observables"][0])
         self.assertIn("gemini-3.5-flash-lite", calls[0].full_url)
         self.assertIn("x-goog-api-key", {k.lower():v for k,v in calls[0].headers.items()})
     def test_reintenta_error_503_y_luego_success(self):
@@ -88,7 +89,7 @@ class TestAnalistaDevOps(unittest.TestCase):
             return gemini_ok()
         result = call_ai("ci", {}, key="dummy", opener=mock, sleeper=lambda x: None, jitter=lambda a,b: 0)
         self.assertEqual(len(count), 2)
-        self.assertIn("Prueba aprobada", result)
+        self.assertIn("Prueba aprobada", result["hechos_observables"][0])
     def test_429_cuota_cero_no_reintenta(self):
         calls = []
         def mock(req, timeout):
@@ -108,7 +109,7 @@ class TestAnalistaDevOps(unittest.TestCase):
         with self.assertRaises(AssistantError): call_ai("ci", {}, key="")
     def test_informe_distingue_inferencia_no_completada(self):
         txt = compose_report("ci", {}, None, status="ERROR_SIN_INFERENCIA_COMPLETA", model="gemini-x")
-        self.assertIn("No se completó ninguna inferencia", txt)
+        self.assertIn("No se completó una inferencia verificable", txt)
     def test_carga_local_sin_api(self):
         with tempfile.TemporaryDirectory() as d:
             source, output = Path(d)/"evidence.json", Path(d)/"report.md"
@@ -144,5 +145,108 @@ class TestAnalistaDevOps(unittest.TestCase):
             return {"tag_name":"v1.2.0","html_url":"https://github.com/u/r/releases/tag/v1.2.0"}
         self.assertEqual(fetch_evidence("entrega","u/r","t","v1.2.0",getter=fake)["release"]["tag_name"],"v1.2.0")
         self.assertIn("/releases/tags/v1.2.0", paths[0])
+
+    def test_secciones_exactas_del_informe_profesional(self):
+        data = {key: [f"Dato de {key}"] for key in ANALYSIS_FIELDS}
+        e = {"repository": "u/r", "evidence_origin": "GITHUB_API", "mode": "mantenimiento",
+             "issue": {"number": 51, "title": "Error de tags", "state": "open", "html_url": "https://github.com/u/r/issues/51"}}
+        text = compose_report("mantenimiento", e, data, status="IA_REAL_EJECUTADA", model="gemini-3.5-flash-lite")
+        expected_titles = ["# Informe IA DevOps — 8. Mantenimiento de software", "## Evidencia disponible",
+                           "## Análisis y propuestas", "### Hechos observables", "### Hipótesis por confirmar",
+                           "### Recomendaciones", "### Pruebas y evidencias", "### Riesgos y límites", "## Límites obligatorios"]
+        positions = [text.index(title) for title in expected_titles]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("https://github.com/u/r/issues/51", text)
+        self.assertIn("Origen de la evidencia:** `GITHUB_API`", text)
+        self.assertIn("Issue #51", text)
+
+    def test_entrada_local_se_etiqueta_como_no_verificada(self):
+        data = {key: [] for key in ANALYSIS_FIELDS}
+        e = {"repository": "archivo local", "evidence_origin": "ARCHIVO_LOCAL", "mode":"mantenimiento",
+             "input_filename": "simulacion.json", "input": {"issue": 101}}
+        text = compose_report("mantenimiento", e, data, status="IA_REAL_EJECUTADA", model="gemini-3.5-flash-lite")
+        self.assertIn("entrada local; no se debe presentar como incidente real", text)
+        self.assertIn("origen GitHub NO fue verificado", text)
+
+    def test_rechaza_respuesta_gemini_sin_secciones(self):
+        with self.assertRaises(AssistantError):
+            parse_structured_analysis('{"recomendaciones": ["Solo esto"]}')
+        with self.assertRaises(AssistantError):
+            parse_structured_analysis("texto de respuesta sin JSON")
+
+    def test_llamada_solicita_json_con_esquema(self):
+        requests = []
+        def fake(req, timeout):
+            requests.append(json.loads(req.data.decode("utf-8")))
+            return gemini_ok()
+        data = call_ai("ci", {}, key="dummy", opener=fake)
+        self.assertIn("hechos_observables", data)
+        cfg = requests[0]["generationConfig"]
+        self.assertEqual(cfg["responseMimeType"], "application/json")
+        self.assertEqual(set(cfg["responseJsonSchema"]["required"]), set(ANALYSIS_FIELDS))
+
+    def test_no_inventa_issues_si_no_hay(self):
+        e = {"repository": "u/r", "evidence_origin": "GITHUB_API", "mode": "mantenimiento", "issues": []}
+        facts = observed_facts(e)
+        self.assertTrue(any("No se encontraron issues" in x for x in facts))
+        self.assertTrue(any("no demuestra ausencia" in x for x in facts))
+
+    def test_enlaces_fuera_de_github_no_son_fuentes(self):
+        e = {"repository":"u/r", "issue": {"html_url":"https://other.example/u/r/issues/15"}}
+        self.assertEqual(report_sources(e), [])
+
+    def test_target_issue_rechaza_pull_request(self):
+        with self.assertRaises(AssistantError):
+            fetch_evidence("mantenimiento", "u/r", "token", "9",
+                           getter=lambda path, token: {"pull_request": {"url": "x"}})
+
+    def test_muestra_sha_de_ci_sin_afirmar_logs(self):
+        e = {"repository":"u/r", "evidence_origin":"GITHUB_API", "mode":"ci",
+             "run":{"name":"test", "status":"completed", "conclusion":"failure", "head_sha":"abcd1234"}, "jobs":[]}
+        joined = "\n".join(observed_facts(e))
+        self.assertIn("abcd1234", joined)
+        self.assertIn("No se descargaron logs completos", joined)
+
+    def test_require_github_rechaza_entrada_simulada(self):
+        with tempfile.TemporaryDirectory() as d:
+            sample, report = Path(d)/"simulado.json", Path(d)/"reporte.md"
+            sample.write_text('{"issue": 999}', encoding="utf-8")
+            with patch("sys.stderr", new_callable=io.StringIO):
+                status = main(["--mode", "mantenimiento", "--require-github",
+                               "--input-file", str(sample), "--output", str(report)])
+            self.assertEqual(status, 1)
+            self.assertIn("ERROR_SIN_INFERENCIA_COMPLETA", report.read_text(encoding="utf-8"))
+
+    def test_prompt_preserva_json_valido_si_evidencia_es_grande(self):
+        system, prompt = build_messages("mantenimiento", {
+            "repository": "u/r", "evidence_origin": "GITHUB_API", "mode": "mantenimiento",
+            "issues": [{"number": n, "title": "Error", "body": "Lorem ipsum " * 600} for n in range(30)]
+        })
+        raw = prompt.split("<evidencia_no_confiable>\n",1)[1].split("\n</evidencia_no_confiable>",1)[0]
+        self.assertLess(len(raw), 14001)
+        self.assertIn("repository", json.loads(raw))
+
+    def test_integracion_informe_con_api_github_simulada(self):
+        evidence = {"repository": "u/r", "evidence_origin": "GITHUB_API", "mode": "mantenimiento",
+                    "target": "31", "issue": {"number": 31, "title": "Problema de referencia",
+                    "state": "open", "body": "Reporte de usuario, no verificado",
+                    "html_url": "https://github.com/u/r/issues/31"}}
+        analysis = {key: ["Contenido consultivo del modelo"] for key in ANALYSIS_FIELDS}
+        with tempfile.TemporaryDirectory() as d:
+            output = Path(d)/"informe.md"
+            with patch.dict(os.environ, {"GITHUB_REPOSITORY":"u/r", "GITHUB_TOKEN":"token",
+                                      "GEMINI_API_KEY":"dummy", "AI_REPOSITORY_PRIVATE":"false"}):
+                with patch("tools.ai_devops.fetch_evidence", return_value=evidence), patch(
+                    "tools.ai_devops.call_ai", return_value=analysis
+                ):
+                    code = main(["--mode", "mantenimiento", "--target", "31", "--require-github", "--output", str(output)])
+            self.assertEqual(code, 0)
+            report = output.read_text(encoding="utf-8")
+            self.assertIn("IA_REAL_EJECUTADA", report)
+            self.assertIn("GITHUB_API", report)
+            self.assertIn("Issue #31", report)
+            manifest = json.loads(output.with_suffix(".json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["sources"], ["https://github.com/u/r/issues/31"])
+            self.assertEqual(manifest["evidence_origin"], "GITHUB_API")
 
 if __name__ == "__main__": unittest.main()

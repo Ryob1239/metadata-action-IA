@@ -1,4 +1,4 @@
-name: Analisis inteligente DevOps
+name: Análisis inteligente DevOps | Evidencia real
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ on:
           - mantenimiento
           - kanban
       target:
-        description: 'ID de ejecucion/Issue/PR o tag de release (en CI, vacio = ultima ejecucion)'
+        description: 'ID de run, número de Issue o PR, o tag. Vacío: muestra real según el tema.'
         required: false
         type: string
       allow_private_data:
@@ -63,6 +63,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.5-flash-lite' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           AI_REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
           AI_ALLOW_PRIVATE_DATA: ${{ inputs.allow_private_data }}
           AI_MODE: ${{ inputs.mode }}
@@ -72,6 +73,7 @@ jobs:
           python3 tools/ai_devops.py \
             --mode "$AI_MODE" \
             --target "$AI_TARGET" \
+            --require-github \
             --output artifacts/informe-devops.md
       - name: Mostrar resumen ejecutivo y fuentes
         if: always()
