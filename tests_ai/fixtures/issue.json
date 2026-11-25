@@ -1,0 +1,5 @@
+{
+  "type": "maintenance-review",
+  "description": "Entrada aislada de prueba para verificar la escritura de archivos sin utilizar API ni secretos",
+  "expected": "El reporte identifica SIMULACION_SIN_INFERENCIA y no realiza ninguna petición externa"
+}

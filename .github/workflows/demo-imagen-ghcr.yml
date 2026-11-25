@@ -1,4 +1,4 @@
-name: Demo ejecutable Metadata Action + imagen GHCR
+name: Entrega continua - imagen OCI en GHCR
 
 # El PR sólo valida. El job con packages:write sólo corre en main y
 # depende de la validación previa (separación de credenciales).
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   validar-demo:
-    name: Ejecutar Action real + construir y ejecutar contenedor demo
+    name: Validar Action y ejecutar contenedor OCI
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -76,7 +76,7 @@ jobs:
           docker run --rm -e BUILD_VERSION="$BUILD_VERSION" metadata-action-demo:local
 
   publicar-imagen:
-    name: Publicar imagen GHCR (SOLO main, tras validar)
+    name: Publicar imagen OCI (solo main, tras validar)
     needs: validar-demo
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

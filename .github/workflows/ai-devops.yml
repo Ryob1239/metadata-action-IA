@@ -1,15 +1,13 @@
-name: IA DevOps - informe consultivo
+name: Analisis inteligente DevOps
 
-# Ejecución manual para controlar la cuota gratuita y la privacidad de datos.
-# Sin GEMINI_API_KEY produce sólo informe de evidencia (no IA real).
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Tema del PDF que analizará el asistente'
+        description: 'Area de analisis'
         required: true
-        default: 'ci'
         type: choice
+        default: ci
         options:
           - desarrollo
           - pruebas
@@ -20,20 +18,15 @@ on:
           - iac
           - mantenimiento
           - kanban
-      demo_sintetica:
-        description: "Ejemplo sin datos privados (genera respuesta real de Gemini sobre caso sintético)"
-        required: true
-        default: true
-        type: boolean
-      allow_private_data:
-        description: "Autorizo enviar datos de este repositorio privado a la API gratuita de Google (pueden usarse para mejorar productos)"
-        required: true
-        default: false
-        type: boolean
       target:
-        description: 'Nº de issue/PR/run o tag de release; puede dejarse vacío para ciertos modos'
+        description: 'ID de ejecucion/Issue/PR o tag de release (en CI, vacio = ultima ejecucion)'
         required: false
         type: string
+      allow_private_data:
+        description: 'Autorizo transmitir evidencia de repositorio privado a la API externa'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -41,50 +34,61 @@ permissions:
   issues: read
   pull-requests: read
 
-jobs:
-  informe:
-    name: Asistencia IA sin cambiar código ni estados de CI
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Código estable del repositorio
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+concurrency:
+  group: ai-devops-${{ github.ref }}
+  cancel-in-progress: false
 
-      - name: Analizar evidencia y generar informe
+jobs:
+  analizar:
+    name: Analizar evidencia real del repositorio
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout seguro de codigo estable
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Comprobar requisitos de ejecucion
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-3.5-flash-lite
+        run: |
+          if [[ -z "$GEMINI_API_KEY" ]]; then
+            echo '::error::Configura GEMINI_API_KEY en Settings > Secrets and variables > Actions.'
+            exit 1
+          fi
+          python3 --version
+      - name: Elaborar informe consultivo con Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.5-flash-lite' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
           AI_ALLOW_PRIVATE_DATA: ${{ inputs.allow_private_data }}
-          AI_DEMO_SINTETICA: ${{ inputs.demo_sintetica }}
-          AI_INCLUDE_LOGS: 'false' # cambiar a true sólo tras revisar privacidad de logs
           AI_MODE: ${{ inputs.mode }}
           AI_TARGET: ${{ inputs.target }}
         shell: bash
         run: |
-          if [[ "${AI_DEMO_SINTETICA:-true}" == "true" ]]; then
-            echo 'Modo demostración: datos sintéticos del repositorio, sin enviar issues privados.'
-            python3 tools/ai_devops.py \
-              --mode mantenimiento \
-              --input-file examples/ia/issue-mantenimiento.json \
-              --output artifacts/informe-ia.md
+          python3 tools/ai_devops.py \
+            --mode "$AI_MODE" \
+            --target "$AI_TARGET" \
+            --output artifacts/informe-devops.md
+      - name: Mostrar resumen ejecutivo y fuentes
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f artifacts/informe-devops.md ]]; then
+            cat artifacts/informe-devops.md >> "$GITHUB_STEP_SUMMARY"
           else
-            python3 tools/ai_devops.py \
-              --mode "${AI_MODE:-ci}" \
-              --target "${AI_TARGET:-}" \
-              --output artifacts/informe-ia.md
+            echo 'No se genero informe; revisa el log anterior.' >> "$GITHUB_STEP_SUMMARY"
           fi
-          cat artifacts/informe-ia.md >> "$GITHUB_STEP_SUMMARY"
-          if ! grep -q 'IA_REAL_EJECUTADA' artifacts/informe-ia.md; then
-            echo '::warning::IA NO ejecutada: revisa GEMINI_API_KEY o autorización para repo privado. No presentarlo como inferencia real.'
-          fi
-
-      - name: Guardar evidencia de la ejecución
+      - name: Conservar informe y manifiesto de trazabilidad
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: informe-ia-devops-${{ github.run_id }}
-          path: artifacts/informe-ia.md
+          name: analisis-devops-${{ github.run_id }}
+          path: |
+            artifacts/informe-devops.md
+            artifacts/informe-devops.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30
