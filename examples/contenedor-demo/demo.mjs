@@ -12,9 +12,13 @@ const payload = {
   finalidad: 'Comprobar que la imagen publicada arranca y produce una salida verificable',
   integracion: {
     metadatos: 'Etiquetas y labels generados por Metadata Action (GitHub Actions)',
-    inteligenciaArtificial: 'Análisis consultivo independiente mediante Google Gemini API',
+    inteligenciaArtificial: 'Análisis consultivo independiente mediante Google Gemini API'
   },
-  entorno: { runtime: process.version, plataforma: process.platform, arquitectura: process.arch },
+  entorno: {
+    runtime: process.version,
+    plataforma: process.platform,
+    arquitectura: process.arch
+  },
   observacion: 'El contenedor no expone puertos ni realiza inferencias de IA; esas funciones se ejecutan desde workflows independientes.'
 };
 console.log(JSON.stringify(payload, null, 2));
