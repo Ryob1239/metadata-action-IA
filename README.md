@@ -1,3 +1,16 @@
+
+<!-- Metadata Action IA: inicio -->
+## Analista DevOps asistido por Gemini
+
+Esta edición integra un analista consultivo de **solo lectura** para los nueve procesos DevOps, con reportes verificables en Markdown/JSON, reintentos ante errores temporales de la API y pruebas independientes de la red.
+
+- [Especificación profesional y operación](docs/ASISTENTE_DEVOPS_PROFESIONAL.md)
+- [Mapa de capturas para el reporte](docs/GUIA_CAPTURAS_REPORTE.md)
+- [Ejecutar análisis desde GitHub Actions](.github/workflows/ai-devops.yml)
+
+La generación determinista de metadatos Docker permanece a cargo de esta GitHub Action. El asistente no modifica Pull Requests, releases ni estados de CI.
+<!-- Metadata Action IA: fin -->
+
 [![GitHub release](https://img.shields.io/github/release/docker/metadata-action.svg?style=flat-square)](https://github.com/docker/metadata-action/releases/latest)
 [![GitHub marketplace](https://img.shields.io/badge/marketplace-docker--metadata--action-blue?logo=github&style=flat-square)](https://github.com/marketplace/actions/docker-metadata-action)
 [![CI workflow](https://img.shields.io/github/actions/workflow/status/docker/metadata-action/ci.yml?branch=master&label=ci&logo=github&style=flat-square)](https://github.com/docker/metadata-action/actions?workflow=ci)

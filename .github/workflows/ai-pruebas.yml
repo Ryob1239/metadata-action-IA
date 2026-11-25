@@ -1,34 +1,44 @@
-name: IA DevOps - pruebas unitarias
+name: Calidad del asistente IA
 
 on:
   push:
     branches: [main, 'releases/v*']
+    paths:
+      - 'tools/**'
+      - 'tests_ai/**'
+      - '.github/workflows/ai-*.yml'
   pull_request:
+    paths:
+      - 'tools/**'
+      - 'tests_ai/**'
+      - '.github/workflows/ai-*.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  unitarias-asistente:
+  pruebas:
+    name: Pruebas de seguridad, integracion y resiliencia
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
-      - name: Checkout
+      - name: Checkout seguro
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Ejecutar pruebas del asistente sin API ni secretos
+        with:
+          persist-credentials: false
+      - name: Comprobar sintaxis Python
+        run: python3 -m py_compile tools/ai_devops.py tests_ai/test_ai_devops.py
+      - name: Ejecutar bateria automatizada del asistente
         run: python3 -m unittest discover -s tests_ai -v
-      - name: Probar generación de reporte sin invocar IA
+      - name: Comprobar salida de informe sin consumir API
+        shell: bash
         run: |
+          mkdir -p artifacts
           python3 tools/ai_devops.py \
             --mode mantenimiento \
-            --input-file examples/ia/issue-mantenimiento.json \
+            --input-file tests_ai/fixtures/issue.json \
             --dry-run \
-            --output artifacts/ejemplo-offline.md
-          grep -q 'NO_EJECUTADA_DRY_RUN' artifacts/ejemplo-offline.md
-      - name: Adjuntar prueba de modo offline
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: reporte-prueba-offline-${{ github.run_id }}
-          path: artifacts/ejemplo-offline.md
-          retention-days: 7
+            --output artifacts/control-local.md
+          grep -q 'SIMULACION_SIN_INFERENCIA' artifacts/control-local.md
+          test -s artifacts/control-local.json
