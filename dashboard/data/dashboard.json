@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "generated_at": null,
+  "source": "Sincronización pendiente. Publica con GitHub Actions.",
+  "repository": {
+    "name": "Ryob1239/metadata-action-IA",
+    "url": "https://github.com/Ryob1239/metadata-action-IA",
+    "description": "Plataforma DevOps con Gemini y metadatos OCI",
+    "visibility": "public"
+  },
+  "status": "not_synced",
+  "runs": [],
+  "stats": {"total": 0, "success": 0, "failure": 0, "other": 0, "latest": {}},
+  "image": {
+    "reference": "ghcr.io/ryob1239/metadata-action-ia-demo:latest",
+    "available": false,
+    "digest": null,
+    "labels": {},
+    "tags": [],
+    "architecture": null
+  },
+  "warnings": ["Vista previa sin sincronización: los indicadores no representan el estado actual de GitHub."],
+  "links": {
+    "actions": "https://github.com/Ryob1239/metadata-action-IA/actions",
+    "ci": "https://github.com/Ryob1239/metadata-action-IA/actions/workflows/ci.yml",
+    "ai": "https://github.com/Ryob1239/metadata-action-IA/actions/workflows/ai-devops.yml",
+    "inspector": "https://github.com/Ryob1239/metadata-action-IA/actions/workflows/inspeccionar-imagen-ghcr.yml",
+    "security": "https://github.com/Ryob1239/metadata-action-IA/security",
+    "package": "https://github.com/Ryob1239/metadata-action-IA/pkgs/container/metadata-action-ia-demo"
+  }
+}

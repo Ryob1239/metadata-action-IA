@@ -1,0 +1,74 @@
+name: Plataforma DevOps | Publicar dashboard GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard/**'
+      - 'tools/generar_dashboard.py'
+      - 'tests_dashboard/**'
+      - '.github/workflows/publicar-dashboard.yml'
+      - 'docs/PLATAFORMA_GITHUB.md'
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages-dashboard
+  cancel-in-progress: false
+
+jobs:
+  generar:
+    name: Validar y generar panel público
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout de main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Pruebas del generador
+        run: python3 -m unittest discover -s tests_dashboard -v
+      - name: Construir panel con evidencia pública
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 tools/generar_dashboard.py --repo "$GH_REPOSITORY" --output _site
+      - name: Validar artefactos generados
+        run: |
+          test -s _site/index.html
+          test -s _site/data/dashboard.json
+          python3 -m json.tool _site/data/dashboard.json > /dev/null
+          echo '## Panel preparado con evidencia pública' >> "$GITHUB_STEP_SUMMARY"
+          echo "Repositorio: \`$GITHUB_REPOSITORY\`" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Se publican metadatos y enlaces públicos, nunca claves API ni logs privados.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - name: Subir sitio a Pages
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: _site
+
+  publicar:
+    name: Desplegar sitio a GitHub Pages
+    needs: generar
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Desplegar dashboard
+        id: deploy
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

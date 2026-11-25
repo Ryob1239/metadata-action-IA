@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Panel de operaciones de Metadata Action IA: integración continua, entrega OCI, seguridad e inteligencia artificial con fuentes verificables.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>Metadata Action IA · DevOps Control Center</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="./app.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="#inicio" aria-label="Inicio de Metadata Action IA">
+      <span class="brand-mark"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3 43 13.5v21L24 45 5 34.5v-21L24 3Z" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="m5 13.5 19 11 19-11M24 24.5V45" fill="none" stroke="currentColor" stroke-width="2"/><path d="m14 9 19 10.7" stroke="#77E1DB" stroke-width="2"/></svg></span>
+      <span class="brand-copy"><strong>METADATA<span> IA</span></strong><small>DEVOPS PLATFORM</small></span>
+    </a>
+    <div class="workspace"><span class="workspace-dot"></span><div><small>WORKSPACE</small><strong>Operaciones · GitHub</strong></div><span class="chevron">⌄</span></div>
+    <p class="nav-label">PLATAFORMA</p>
+    <nav class="main-nav" aria-label="Navegación principal">
+      <a class="active" href="#inicio"><span class="nav-symbol">◈</span> Resumen ejecutivo</a>
+      <a href="#integracion"><span class="nav-symbol">⌁</span> Integración continua</a>
+      <a href="#entrega"><span class="nav-symbol">⬡</span> Entrega de contenedores</a>
+      <a href="#inteligencia"><span class="nav-symbol">✧</span> Inteligencia artificial</a>
+      <a href="#seguridad"><span class="nav-symbol">◇</span> Seguridad y calidad</a>
+    </nav>
+    <p class="nav-label second">HERRAMIENTAS EXTERNAS</p>
+    <nav class="main-nav secondary-nav" aria-label="Herramientas de GitHub">
+      <a id="nav-repo" href="https://github.com/Ryob1239/metadata-action-IA" target="_blank" rel="noopener noreferrer"><span class="nav-symbol">↗</span> Repositorio</a>
+      <a id="nav-actions" href="https://github.com/Ryob1239/metadata-action-IA/actions" target="_blank" rel="noopener noreferrer"><span class="nav-symbol">↗</span> GitHub Actions</a>
+      <a id="nav-package" href="https://github.com/Ryob1239/metadata-action-IA/pkgs/container/metadata-action-ia-demo" target="_blank" rel="noopener noreferrer"><span class="nav-symbol">↗</span> Paquete OCI</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="status-light"></span><div><strong>Modo de lectura</strong><small>Sin credenciales en el navegador</small></div></div>
+  </aside>
+  <main class="main-content" id="inicio">
+    <header class="topbar"><div><span class="eyebrow">INFRAESTRUCTURA / ESTADO DEL PROYECTO</span><div class="breadcrumb">Metadata Action IA <span>/</span> Control Center</div></div><div class="top-actions"><span id="sync-indicator" class="sync-pill pending">● Pendiente de sincronizar</span><a class="icon-link" id="head-github" href="https://github.com/Ryob1239/metadata-action-IA" target="_blank" rel="noopener noreferrer" aria-label="Abrir repositorio">↗</a></div></header>
+    <section class="hero"><div class="hero-glow"></div><div class="hero-copy"><span class="hero-kicker"><span></span> OBSERVABILIDAD DE SOFTWARE</span><h1>Centro de operaciones<br><em>DevOps & Inteligencia Artificial.</em></h1><p>Una vista verificable del ciclo de integración, la entrega de imágenes OCI y los análisis consultivos generados mediante Gemini. Datos sincronizados desde GitHub.</p><div class="hero-actions"><a id="hero-actions" class="btn-primary" href="https://github.com/Ryob1239/metadata-action-IA/actions" target="_blank" rel="noopener noreferrer">Abrir GitHub Actions <span>↗</span></a><a id="hero-package" class="btn-outline" href="https://github.com/Ryob1239/metadata-action-IA/pkgs/container/metadata-action-ia-demo" target="_blank" rel="noopener noreferrer">Ver imagen OCI <span>↗</span></a></div></div><div class="hero-visual" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="visual-box"><span>CI</span><span class="flow-line"></span><span>CD</span><span class="flow-line"></span><span>AI</span></div></div></section>
+    <div class="subheading"><div><h2>Panorama de la plataforma</h2><p>Indicadores de las últimas ejecuciones públicas consultadas.</p></div><span class="timestamp" id="last-sync">Actualización pendiente</span></div>
+    <section class="metric-grid" aria-label="Indicadores"><article class="metric-card"><div class="metric-head"><span>WORKFLOWS CONSULTADOS</span><span class="metric-icon">⌘</span></div><strong id="metric-total">—</strong><small>Ventana de ejecuciones recientes</small></article><article class="metric-card"><div class="metric-head"><span>EJECUCIONES EXITOSAS</span><span class="metric-icon green">✓</span></div><strong id="metric-success">—</strong><small id="metric-success-note">Sin datos actualizados</small></article><article class="metric-card"><div class="metric-head"><span>FALLOS REGISTRADOS</span><span class="metric-icon amber">!</span></div><strong id="metric-failed">—</strong><small>No equivale a vulnerabilidades encontradas</small></article><article class="metric-card"><div class="metric-head"><span>IMAGEN PUBLICADA</span><span class="metric-icon">⬡</span></div><strong id="metric-image" class="small-value">Sin verificar</strong><small>Disponibilidad del artefacto OCI</small></article></section>
+    <section class="content-grid"><article class="panel span-wide" id="integracion"><div class="panel-head"><div><span class="section-kicker">INTEGRACIÓN CONTINUA · CI</span><h3>Ejecuciones y validaciones</h3><p>Estados obtenidos desde GitHub Actions. Abre cada registro para revisar sus comprobaciones.</p></div><a id="ci-link" class="text-action" href="#">Ver pipeline ↗</a></div><div id="run-list" class="run-list"><div class="empty">Sin datos sincronizados. Ejecuta el workflow de publicación del dashboard.</div></div><div class="panel-footer"><span class="legend"><i class="dot success"></i> Exitoso <i class="dot failed"></i> Fallido <i class="dot pending"></i> Otro</span><span>Últimos registros disponibles</span></div></article>
+      <article class="panel image-panel" id="entrega"><div class="panel-head"><div><span class="section-kicker">ENTREGA CONTINUA · CD</span><h3>Imagen OCI en GHCR</h3><p>Artefacto versionado y publicado después de validaciones.</p></div><span id="image-badge" class="badge neutral">No verificada</span></div><div class="package-identity"><div class="package-icon">⬡</div><div><strong>metadata-action-ia-demo</strong><span>GitHub Container Registry</span></div></div><div class="tag-row"><span>latest</span><span>main</span><span id="sha-tag">SHA pendiente</span></div><dl class="detail-list"><div><dt>Referencia</dt><dd id="image-ref" class="mono">ghcr.io/ryob1239/metadata-action-ia-demo:latest</dd></div><div><dt>Arquitectura</dt><dd id="image-arch">Pendiente</dd></div><div><dt>Digest</dt><dd id="image-digest" class="mono">No disponible</dd></div><div><dt>Descripción OCI</dt><dd id="image-description">Ejecutable de validación de Metadata Action, no servidor Gemini.</dd></div></dl><a id="package-link" class="full-button" href="https://github.com/Ryob1239/metadata-action-IA/pkgs/container/metadata-action-ia-demo" target="_blank" rel="noopener noreferrer">Ver versiones publicadas <span>↗</span></a></article>
+      <article class="panel ai-panel" id="inteligencia"><div class="panel-head"><div><span class="section-kicker">INTELIGENCIA ARTIFICIAL · GEMINI</span><h3>Informes consultivos</h3><p>Ejecuciones reales del workflow de análisis. Los informes completos permanecen en GitHub Actions.</p></div><span class="purple-icon">✦</span></div><div id="ai-runs" class="ai-list"><div class="empty">No hay ejecuciones visibles en la muestra.</div></div><a class="full-button secondary" id="ai-link" href="#" target="_blank" rel="noopener noreferrer">Iniciar un análisis en Actions <span>↗</span></a><p class="privacy-note">La IA no aprueba cambios, no publica imágenes y no sustituye pruebas automatizadas.</p></article>
+      <article class="panel security-panel" id="seguridad"><div class="panel-head"><div><span class="section-kicker">SEGURIDAD Y CALIDAD</span><h3>Controles de validación</h3><p>Resultados asociados a herramientas del repositorio.</p></div><span class="shield">◈</span></div><div id="security-runs" class="security-list"><div class="empty">Aún no hay controles en la muestra.</div></div><p class="footnote">Un workflow exitoso indica que terminó según su configuración; no constituye garantía de ausencia de vulnerabilidades.</p><a id="security-link" class="text-action" href="#" target="_blank" rel="noopener noreferrer">Consultar Security & quality ↗</a></article>
+    </section>
+    <section class="inspector-card"><div class="inspector-head"><div><span class="section-kicker">OPERACIONES DOCKER · SIN INSTALAR DOCKER DESKTOP</span><h3>Ejecutar e inspeccionar la imagen desde GitHub</h3><p>El workflow ejecuta <code>docker pull</code>, <code>docker run</code> e inspecciona los labels OCI. Sus resultados quedan en los logs y un artefacto descargable.</p></div><a id="inspect-link" class="btn-primary" href="#" target="_blank" rel="noopener noreferrer">Ejecutar inspector ↗</a></div><div class="terminal"><div class="terminal-top"><div><b></b><b></b><b></b></div><span>terminal · comandos del runner</span><span>READ ONLY</span></div><pre><code><span>$</span> docker pull ghcr.io/ryob1239/metadata-action-ia-demo:latest
+<span>$</span> docker run --rm ghcr.io/ryob1239/metadata-action-ia-demo:latest
+<span>$</span> docker image inspect ghcr.io/ryob1239/metadata-action-ia-demo:latest</code></pre></div></section>
+    <div id="warnings" class="warnings" role="status"></div>
+    <footer><div><strong>METADATA ACTION <span>IA</span></strong><p>Plataforma de observabilidad pública de apoyo al proceso DevOps.</p></div><div><span>Origen: GitHub API + GHCR</span><span>Datos actualizados por GitHub Actions</span><span>© 2026 · Proyecto académico</span></div></footer>
+  </main>
+</div>
+</body>
+</html>
