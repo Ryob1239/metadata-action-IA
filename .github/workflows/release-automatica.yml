@@ -1,0 +1,66 @@
+name: Release automatica - Metadata Action IA
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publicar-release:
+    name: Crear version y publicar release
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TARGET_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+
+    steps:
+      - name: Determinar siguiente version SemVer
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(gh api "repos/${GH_REPO}/tags?per_page=100" --paginate --jq '.[].name' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V | tail -n 1 || true)"
+
+          if [[ -z "$latest" ]]; then
+            next="v1.0.0"
+          else
+            IFS=. read -r major minor patch <<< "${latest#v}"
+            if jq -e 'index("release:major") != null' <<< "$PR_LABELS" >/dev/null; then
+              next="v$((major + 1)).0.0"
+            elif jq -e 'index("release:minor") != null' <<< "$PR_LABELS" >/dev/null; then
+              next="v${major}.$((minor + 1)).0"
+            else
+              next="v${major}.${minor}.$((patch + 1))"
+            fi
+          fi
+          printf 'tag=%s\n' "$next" >> "$GITHUB_OUTPUT"
+          echo "Version: $next | Commit: $TARGET_SHA"
+
+      - name: Publicar GitHub Release con notas automaticas
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release create "$VERSION" \
+            --repo "$GH_REPO" \
+            --target "$TARGET_SHA" \
+            --title "Metadata Action IA $VERSION" \
+            --generate-notes \
+            --fail-on-no-commits
+          echo "Release publicado: $VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Ver releases](https://github.com/$GH_REPO/releases)" >> "$GITHUB_STEP_SUMMARY"
